@@ -13,7 +13,7 @@ public class OBDEmulatorAPITest {
 
     private final static Logger LOG = LoggerFactory.getLogger(OBDEmulatorAPITest.class);
 
-    private final String COM_PORT_NAME_OBDII_EMULATOR = "COM3";
+    private final String COM_PORT_NAME_OBDII_EMULATOR = "tty.SLAB_USBtoUART";
 
     private OBDEmulatorAPI car;
 
@@ -125,7 +125,7 @@ public class OBDEmulatorAPITest {
     @Test
     public void test_time_based_trip() throws Exception {
         car.connect(COM_PORT_NAME_OBDII_EMULATOR);
-        car.setOBDProtocol("CAN_11B_500K");
+        //car.setOBDProtocol("CAN_11B_500K");
         car.setVINReportingEnabled(true);
         //car.setVINReportingNr("");
         car.setEngineStarted(true);
@@ -146,4 +146,62 @@ public class OBDEmulatorAPITest {
         car.setSpeed(0);
         car.setEngineStarted(false);
     }
+
+    @Test
+    public void test_time_based_short_trip() throws Exception {
+        car.connect(COM_PORT_NAME_OBDII_EMULATOR);
+        //car.setOBDProtocol("CAN_11B_500K");
+        car.setVINReportingEnabled(true);
+        //car.setVINReportingNr("");
+        car.setEngineStarted(true);
+        car.setMILPID(true);
+        car.setMILDistanceTraveledKm(25);
+        car.setEngineFuelRateLitersPerHour(5);
+        car.setFuelTankPercentage(50);
+        car.setDTC03Value("P0105,P0200,P0300,P0500,P0600,C0077");
+
+        long t = System.currentTimeMillis();
+        long end = t+10000; //How long trip should last (milliseconds)
+        while(System.currentTimeMillis() < end) {
+            car.setEngineRPM(ThreadLocalRandom.current().nextInt(2500,2700));
+            car.setSpeed(72); //72km/h = 20 meters per second, easy to calculate an expected distance
+        }
+
+        car.setEngineRPM(0);
+        car.setSpeed(0);
+        car.setEngineStarted(false);
+    }
+
+  @Test
+  public void test_trigger_de_acceleration() throws Exception {
+      car.connect(COM_PORT_NAME_OBDII_EMULATOR);
+      //car.setOBDProtocol("CAN_11B_500K");
+      car.setVINReportingEnabled(true);
+      //car.setVINReportingNr("");
+      car.setEngineStarted(true);
+      car.setMILPID(true);
+      car.setMILDistanceTraveledKm(25);
+      car.setEngineFuelRateLitersPerHour(5);
+      car.setFuelTankPercentage(50);
+      car.setDTC03Value("P0105,P0200,P0300,P0500,P0600,C0077");
+
+      long t = System.currentTimeMillis();
+      long end = t + 100000000; //How long trip should last (milliseconds)
+      long suddenDropStart = t + 4000; // When to start the low speed period (ms)
+      long suddenDropEnd = t + 40000;  // When to end  the low speed period (ms)
+      while (System.currentTimeMillis() < end) {
+         long now = System.currentTimeMillis();
+         if (now > suddenDropStart && now < suddenDropEnd) {
+             car.setEngineRPM(ThreadLocalRandom.current().nextInt(1250, 1350));
+             car.setSpeed(36);
+         } else {
+             car.setEngineRPM(ThreadLocalRandom.current().nextInt(2500, 2700));
+             car.setSpeed(72); //72km/h = 20 meters per second, easy to calculate an expected distance
+         }
+    }
+    car.setEngineRPM(0);
+    car.setSpeed(0);
+    car.setEngineStarted(false);
+  }
+
 }
